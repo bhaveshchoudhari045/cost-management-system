@@ -75,6 +75,7 @@ st.markdown(
     .cart-body { padding: 20px; flex-grow: 1; text-align: center; display: flex; flex-direction: column; justify-content: space-around; }
     
     .product-title {
+        color : blue;
         margin: 0; 
         font-family: 'Sofia', sans-serif; 
         font-size: 24px; 
