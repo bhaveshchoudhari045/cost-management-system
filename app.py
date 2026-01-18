@@ -79,7 +79,7 @@ st.markdown(
         margin: 0; 
         font-family: 'Sofia', sans-serif; 
         font-size: 24px; 
-        color: #ffffff !important;
+        color: blue !important;
         text-shadow: 0px 0px 5px rgba(255,255,255,0.2);
     }
 
