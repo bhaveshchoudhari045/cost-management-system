@@ -9,7 +9,6 @@ st.set_page_config(layout="wide", page_title="Cost Management 2026")
 
 # --- 2. AUTHENTICATION ---
 USER_DB = "users.json"
-
 def load_users():
     if os.path.exists(USER_DB):
         with open(USER_DB, "r") as f: return json.load(f)
@@ -17,21 +16,16 @@ def load_users():
 
 def save_user(username, password):
     users = load_users()
-    hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-    users[username] = hashed_pw
+    users[username] = hashlib.sha256(password.encode()).hexdigest()
     with open(USER_DB, "w") as f: json.dump(users, f)
 
 def verify_user(username, password):
     users = load_users()
-    hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-    return users.get(username) == hashed_pw
+    return users.get(username) == hashlib.sha256(password.encode()).hexdigest()
 
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
-if 'username' not in st.session_state:
-    st.session_state.username = None
 
-# --- LOGIN / REGISTER UI ---
 if not st.session_state.logged_in:
     st.markdown("<h1 style='text-align:center; padding-top:50px;'>🛡️ Secure Access</h1>", unsafe_allow_html=True)
     _, col_form, _ = st.columns(3)
@@ -43,24 +37,18 @@ if not st.session_state.logged_in:
                 l_pass = st.text_input("Password", type="password")
                 if st.form_submit_button("Login", use_container_width=True):
                     if verify_user(l_user, l_pass):
-                        st.session_state.logged_in = True
-                        st.session_state.username = l_user
+                        st.session_state.logged_in, st.session_state.username = True, l_user
                         st.rerun()
                     else: st.error("Invalid credentials")
         with tab2:
             with st.form("reg_form"):
-                r_user = st.text_input("New Username")
-                r_pass = st.text_input("New Password", type="password")
+                r_user, r_pass = st.text_input("New Username"), st.text_input("New Password", type="password")
                 if st.form_submit_button("Create Account", use_container_width=True):
-                    if r_user and r_pass:
-                        save_user(r_user, r_pass)
-                        st.success("Account created!")
+                    if r_user and r_pass: save_user(r_user, r_pass); st.success("Account created!")
     st.stop()
 
 # --- 3. DATA MANAGEMENT ---
-CURRENT_USER = st.session_state.username
-DB_FILE = f"expenses_{CURRENT_USER}.json"
-
+DB_FILE = f"expenses_{st.session_state.username}.json"
 def load_data():
     if os.path.exists(DB_FILE):
         try:
@@ -71,12 +59,9 @@ def load_data():
 def save_data(data):
     with open(DB_FILE, "w") as f: json.dump(data, f)
 
-if 'expenses' not in st.session_state:
-    st.session_state.expenses = load_data()
-if 'edit_index' not in st.session_state:
-    st.session_state.edit_index = None
+if 'expenses' not in st.session_state: st.session_state.expenses = load_data()
+if 'edit_index' not in st.session_state: st.session_state.edit_index = None
 
-# Callbacks
 def handle_delete(index):
     st.session_state.expenses.pop(index)
     save_data(st.session_state.expenses)
@@ -84,7 +69,7 @@ def handle_delete(index):
 def handle_edit(index):
     st.session_state.edit_index = index
 
-# --- 4. CUSTOM CSS (TEXT-ONLY CART BUTTONS) ---
+# --- 4. CSS: ABSOLUTE POSITIONING FOR INTERNAL BUTTONS ---
 st.markdown(
     """
     <style>
@@ -96,35 +81,41 @@ st.markdown(
         text-shadow: 0px 0px 12px rgba(75, 190, 18, 0.8);
     }
 
+    /* THE CART CONTAINER */
     .cart-box {
+        position: relative; /* Essential for absolute positioning of children */
         border-radius: 20px; 
         background: rgba(15, 15, 15, 0.85); 
         backdrop-filter: blur(15px);
         border: 1.5px solid rgba(255, 255, 255, 0.15);
-        height: 280px; padding: 20px; text-align: center;
-        margin-bottom: -10px;
+        height: 330px; padding: 20px; text-align: center;
+        margin-bottom: 20px;
     }
     
-    /* TARGET ONLY EDIT/DELETE BUTTONS INSIDE COLUMNS */
-    /* Removes all styling except text color */
-    div[data-testid="stHorizontalBlock"] div.stButton > button {
+    /* BUTTON ROW POSITIONING (INSIDE CART AT BOTTOM) */
+    .button-anchor {
+        position: absolute;
+        bottom: 15px;
+        left: 0;
+        right: 0;
+        padding: 0 10px;
+    }
+
+    /* TEXT-ONLY BUTTON STYLING */
+    div.stButton > button {
         background: none !important;
         border: none !important;
         box-shadow: none !important;
         font-weight: bold !important;
-        text-decoration: underline;
-        font-size: 14px !important;
+        font-size: 13px !important;
+        padding: 0px !important;
+        min-height: 0px !important;
     }
     
-    /* Cyan for Edit Text */
-    div[data-testid="stHorizontalBlock"] div:nth-child(1) > div.stButton > button {
-        color: #00ffff !important;
-    }
-    
-    /* Red for Delete Text */
-    div[data-testid="stHorizontalBlock"] div:nth-child(2) > div.stButton > button {
-        color: #ff4b4b !important;
-    }
+    /* Edit Color */
+    div.stButton > button[key^="e_"] { color: #00ffff !important; }
+    /* Delete Color */
+    div.stButton > button[key^="d_"] { color: #ff4b4b !important; }
 
     .glow-blue { box-shadow: 0 0 15px rgba(0, 191, 255, 0.6); }
     .glow-green { box-shadow: 0 0 15px rgba(50, 205, 50, 0.6); }
@@ -141,8 +132,7 @@ _, col_btn, _ = st.columns(3)
 with col_btn:
     if st.button("✨ Add New Cart", use_container_width=True):
         st.session_state.expenses.append({"name": "New Item", "cost": 0, "date": str(date.today())})
-        save_data(st.session_state.expenses)
-        st.rerun()
+        save_data(st.session_state.expenses); st.rerun()
 
 if st.session_state.expenses:
     cols = st.columns(4, gap="large")
@@ -153,20 +143,24 @@ if st.session_state.expenses:
         glow = "glow-blue" if cpd < 7 else "glow-green" if cpd < 15 else "glow-yellow" if cpd < 25 else "glow-orange" if cpd < 50 else "glow-red"
 
         with cols[idx % 4]:
+            # The Cart Visual
             st.markdown(f"""
                 <div class="cart-box {glow}">
-                    <p style="font-family:'Sofia'; font-size:24px; color:white; margin:0;">{item['name']}</p>
+                    <p style="font-family:'Sofia'; font-size:24px; color:white; margin-top:10px;">{item['name']}</p>
                     <p style="color:#aaa; font-size:11px;">📅 {item['date']}</p>
-                    <hr style="opacity:0.1">
-                    <p style="font-size:22px; font-weight:bold; margin:0; color:white;">₹{item['cost']}</p>
-                    <p style="color:#4bbe12; font-size:14px; margin:0; font-weight:bold;">₹{cpd:.2f} / day</p>
+                    <hr style="opacity:0.1; margin: 15px 0;">
+                    <p style="font-size:22px; font-weight:bold; color:white; margin:0;">₹{item['cost']}</p>
+                    <p style="color:#4bbe12; font-size:14px; font-weight:bold; margin:0;">₹{cpd:.2f} / day</p>
+                    <div class="button-anchor"></div> <!-- Invisible anchor for buttons -->
                 </div>
             """, unsafe_allow_html=True)
             
-            # Action Row (Text-Only Style)
-            btn_col1, btn_col2 = st.columns(2)
-            btn_col1.button("EDIT", key=f"e_{idx}", on_click=handle_edit, args=(idx,), use_container_width=True)
-            btn_col2.button("DELETE", key=f"d_{idx}", on_click=handle_delete, args=(idx,), use_container_width=True)
+            # Action Buttons - Floating inside the container via negative margin
+            st.markdown('<div style="margin-top: -55px;">', unsafe_allow_html=True)
+            btn_c1, btn_c2 = st.columns([1, 1.2]) # Slightly more space for "DELETE"
+            btn_c1.button("EDIT", key=f"e_{idx}", on_click=handle_edit, args=(idx,))
+            btn_c2.button("DELETE", key=f"d_{idx}", on_click=handle_delete, args=(idx,))
+            st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 6. EDIT FORM ---
 if st.session_state.edit_index is not None:
@@ -176,11 +170,7 @@ if st.session_state.edit_index is not None:
         with st.form("edit_panel"):
             st.subheader(f"✏️ Update: {it['name']}")
             f1, f2, f3 = st.columns(3)
-            n = f1.text_input("Name", value=it['name'])
-            c = f2.number_input("Cost (₹)", value=float(it['cost']))
-            d = f3.date_input("Date", value=datetime.strptime(it['date'], "%Y-%m-%d"))
+            n, c, d = f1.text_input("Name", value=it['name']), f2.number_input("Cost", value=float(it['cost'])), f3.date_input("Date", value=datetime.strptime(it['date'], "%Y-%m-%d"))
             if st.form_submit_button("Save Changes", use_container_width=True):
                 st.session_state.expenses[i] = {"name": n, "cost": c, "date": str(d)}
-                save_data(st.session_state.expenses)
-                st.session_state.edit_index = None
-                st.rerun()
+                save_data(st.session_state.expenses); st.session_state.edit_index = None; st.rerun()
