@@ -33,10 +33,11 @@ if 'expenses' not in st.session_state:
 if 'edit_index' not in st.session_state:
     st.session_state.edit_index = None
 
-# Handle URL Params
+# Handle URL Params for Integrated Buttons
 params = st.query_params
 if "action" in params:
-    act, idx = params["action"], int(params["id"])
+    act = params["action"]
+    idx = int(params["id"])
     if idx < len(st.session_state.expenses):
         if act == "delete":
             st.session_state.expenses.pop(idx)
@@ -73,7 +74,6 @@ st.markdown(
 
     .cart-body { padding: 20px; flex-grow: 1; text-align: center; display: flex; flex-direction: column; justify-content: space-around; }
     
-    /* FIX: Ensure Product Title is visible */
     .product-title {
         margin: 0; 
         font-family: 'Sofia', sans-serif; 
@@ -97,12 +97,14 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- 4. ADD ACTION ---
-_, col_btn, _ = st.columns()
-if col_btn.button("✨ Add New Cart", use_container_width=True):
-    st.session_state.expenses.append({"name": "Product Name", "cost": 0, "date": str(date.today())})
-    save_data(st.session_state.expenses)
-    st.rerun()
+# --- 4. ADD ACTION (FIXED COLUMNS) ---
+# We use [1, 1, 1] to define 3 equal columns and place the button in the middle
+_, col_btn, _ = st.columns([1, 1, 1])
+with col_btn:
+    if st.button("✨ Add New Cart", use_container_width=True):
+        st.session_state.expenses.append({"name": "Product Name", "cost": 0, "date": str(date.today())})
+        save_data(st.session_state.expenses)
+        st.rerun()
 
 # --- 5. DYNAMIC GRID ---
 if st.session_state.expenses:
@@ -143,8 +145,16 @@ if st.session_state.edit_index is not None:
         with st.form("edit_panel"):
             st.subheader(f"✏️ Update: {it['name']}")
             f1, f2, f3 = st.columns(3)
-            n, c, d = f1.text_input("Name", value=it['name']), f2.number_input("Cost (₹)", value=float(it['cost'])), f3.date_input("Date", value=datetime.strptime(it['date'], "%Y-%m-%d"))
-            if st.form_submit_button("💾 Save Changes"):
+            n = f1.text_input("Name", value=it['name'])
+            c = f2.number_input("Cost (₹)", value=float(it['cost']))
+            d = f3.date_input("Date", value=datetime.strptime(it['date'], "%Y-%m-%d"))
+            
+            sc1, sc2 = st.columns(2)
+            if sc1.form_submit_button("💾 Save Changes", use_container_width=True):
                 st.session_state.expenses[i] = {"name": n, "cost": c, "date": str(d)}
-                save_data(st.session_state.expenses); st.session_state.edit_index = None; st.rerun()
-            if st.button("Cancel"): st.session_state.edit_index = None; st.rerun()
+                save_data(st.session_state.expenses)
+                st.session_state.edit_index = None
+                st.rerun()
+            if sc2.form_submit_button("Cancel", use_container_width=True):
+                st.session_state.edit_index = None
+                st.rerun()
