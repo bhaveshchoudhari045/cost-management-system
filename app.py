@@ -2,13 +2,28 @@ import streamlit as st
 import json
 import os
 from datetime import datetime, date
+import uuid
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(layout="wide", page_title="Cost Management 2026")
 
-DB_FILE = "expenses_final_2026.json"
+# --- 2. USER AUTHENTICATION & DATA PERSISTENCE ---
+# Sidebar for privacy
+st.sidebar.title("🔐 User Access")
+user_key = st.sidebar.text_input("Enter Private Key", type="password", help="Data is saved uniquely to this key.")
 
-# --- PERSISTENCE LOGIC ---
+if not user_key:
+    st.markdown("""
+        <div style='text-align: center; margin-top: 100px;'>
+            <h1>🛡️ Secure Cost Management</h1>
+            <p>Please enter your <b>Private Key</b> in the sidebar to load your data.</p>
+        </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+# Unique database file per user
+DB_FILE = f"expenses_{user_key}.json"
+
 def load_data():
     if os.path.exists(DB_FILE):
         try:
@@ -27,7 +42,7 @@ if 'expenses' not in st.session_state:
 if 'edit_index' not in st.session_state:
     st.session_state.edit_index = None
 
-# Detect Integrated Actions via URL Params
+# Handle URL Params for Integrated Buttons
 params = st.query_params
 if "action" in params:
     act = params["action"]
@@ -42,16 +57,16 @@ if "action" in params:
         st.query_params.clear()
         st.rerun()
 
-# --- 2. ADVANCED CSS ---
+# --- 3. CUSTOM CSS ---
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css?=Sofia');
+    @import url('https://fonts.googleapis.com');
     @import url('https://fonts.googleapis.com');
 
     .fire-container {
-        color: BLACK; text-align: center; font-size: 70px;
-        font-family: 'Sofia', sans-serif; margin-bottom: 100px; padding-top: 40px;
+        color: white; text-align: center; font-size: 70px;
+        font-family: 'Sofia', sans-serif; margin-bottom: 80px; padding-top: 30px;
         text-shadow: 0px 0px 12px rgba(75, 190, 18, 0.8), 0px 0px 3px rgba(255, 255, 255, 0.5);
     }
 
@@ -81,7 +96,7 @@ st.markdown(
     .btn-del { background: rgba(255, 0, 0, 0.15); color: #ff4b4b !important; }
     .btn-del:hover { background: rgba(255, 0, 0, 0.4); color: white !important; }
 
-    /* Shadow Colors [Target User Specifications] */
+    /* Shadow Colors (CPD Logic) */
     .glow-blue { box-shadow: 0 0 20px rgba(0, 191, 255, 0.6); }
     .glow-green { box-shadow: 0 0 20px rgba(50, 205, 50, 0.6); }
     .glow-yellow { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
@@ -93,25 +108,22 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- 3. ACTIONS ---
-col_a, col_btn, col_c = st.columns([2, 1, 2])
-with col_btn:
-    if st.button("✨ Add New Cart", use_container_width=True):
-        new_item = {"name": "Product Name", "cost": 0, "date": str(date.today())}
-        st.session_state.expenses.append(new_item)
-        save_data(st.session_state.expenses)
-        st.rerun()
+# --- 4. ADD ACTION ---
+_, col_btn, _ = st.columns([1, 1, 1])
+if col_btn.button("✨ Add New Cart", use_container_width=True):
+    new_item = {"name": "Product Name", "cost": 0, "date": str(date.today())}
+    st.session_state.expenses.append(new_item)
+    save_data(st.session_state.expenses)
+    st.rerun()
 
-# --- 4. DYNAMIC GRID (4 PER ROW) ---
+# --- 5. DYNAMIC GRID (4 PER ROW) ---
 if st.session_state.expenses:
-    cols = st.columns(4, gap="large") # Wide mode fix
+    cols = st.columns(4, gap="large")
     for idx, item in enumerate(st.session_state.expenses):
-        # CPD Calculation Logic
         b_date = datetime.strptime(item['date'], "%Y-%m-%d").date()
         days = (date.today() - b_date).days or 1
         cpd = item['cost'] / days
         
-        # Color Thresholds per User Specification
         if cpd < 7: glow = "glow-blue"
         elif cpd < 15: glow = "glow-green"
         elif cpd < 25: glow = "glow-yellow"
@@ -138,10 +150,10 @@ if st.session_state.expenses:
                 </div>
             """, unsafe_allow_html=True)
 
-# --- 5. SAFE EDIT FORM ---
+# --- 6. SAFE EDIT FORM ---
 if st.session_state.edit_index is not None:
     i = st.session_state.edit_index
-    if i < len(st.session_state.expenses): # Index safety fix
+    if i < len(st.session_state.expenses):
         item_to_edit = st.session_state.expenses[i]
         st.divider()
         with st.form("edit_panel"):
@@ -160,6 +172,3 @@ if st.session_state.edit_index is not None:
             if sc2.form_submit_button("🚫 Cancel", use_container_width=True):
                 st.session_state.edit_index = None
                 st.rerun()
-    else:
-        st.session_state.edit_index = None
-        st.rerun()
