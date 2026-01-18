@@ -17,7 +17,6 @@ def load_users():
 
 def save_user(username, password):
     users = load_users()
-    # Hash password for security
     hashed_pw = hashlib.sha256(password.encode()).hexdigest()
     users[username] = hashed_pw
     with open(USER_DB, "w") as f: json.dump(users, f)
@@ -43,7 +42,7 @@ if not st.session_state.logged_in:
         with st.form("login_form"):
             l_user = st.text_input("Username")
             l_pass = st.text_input("Password", type="password")
-            if st.form_submit_button("Login"):
+            if st.form_submit_button("Login", use_container_width=True):
                 if verify_user(l_user, l_pass):
                     st.session_state.logged_in = True
                     st.session_state.username = l_user
@@ -55,7 +54,7 @@ if not st.session_state.logged_in:
         with st.form("reg_form"):
             r_user = st.text_input("New Username")
             r_pass = st.text_input("New Password", type="password")
-            if st.form_submit_button("Create Account"):
+            if st.form_submit_button("Create Account", use_container_width=True):
                 if r_user in load_users():
                     st.error("User already exists!")
                 elif r_user and r_pass:
@@ -86,7 +85,7 @@ if 'edit_index' not in st.session_state:
 
 # Sidebar Logout
 st.sidebar.title(f"👤 {CURRENT_USER}")
-if st.sidebar.button("Logout"):
+if st.sidebar.button("Logout", use_container_width=True):
     st.session_state.logged_in = False
     st.session_state.username = None
     st.session_state.expenses = []
@@ -152,8 +151,9 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- 5. ADD ACTION ---
-_, col_btn, _ = st.columns()
+# --- 5. ADD ACTION (FIXED) ---
+# Specified 3 columns to handle center alignment correctly
+_, col_btn, _ = st.columns(3)
 with col_btn:
     if st.button("✨ Add New Cart", use_container_width=True):
         st.session_state.expenses.append({"name": "Product Name", "cost": 0, "date": str(date.today())})
