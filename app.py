@@ -2,26 +2,18 @@ import streamlit as st
 import json
 import os
 from datetime import datetime, date
-import uuid
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(layout="wide", page_title="Cost Management 2026")
 
 # --- 2. USER AUTHENTICATION & DATA PERSISTENCE ---
-# Sidebar for privacy
 st.sidebar.title("🔐 User Access")
-user_key = st.sidebar.text_input("Enter Private Key", type="password", help="Data is saved uniquely to this key.")
+user_key = st.sidebar.text_input("Enter Private Key", type="password")
 
 if not user_key:
-    st.markdown("""
-        <div style='text-align: center; margin-top: 100px;'>
-            <h1>🛡️ Secure Cost Management</h1>
-            <p>Please enter your <b>Private Key</b> in the sidebar to load your data.</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; margin-top:100px;'>🛡️ Enter Private Key in Sidebar to Load Data</h1>", unsafe_allow_html=True)
     st.stop()
 
-# Unique database file per user
 DB_FILE = f"expenses_{user_key}.json"
 
 def load_data():
@@ -36,24 +28,21 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f)
 
-# Initialize Session State
 if 'expenses' not in st.session_state:
     st.session_state.expenses = load_data()
 if 'edit_index' not in st.session_state:
     st.session_state.edit_index = None
 
-# Handle URL Params for Integrated Buttons
+# Handle URL Params
 params = st.query_params
 if "action" in params:
-    act = params["action"]
-    idx = int(params["id"])
-    if act == "delete" and idx < len(st.session_state.expenses):
-        st.session_state.expenses.pop(idx)
-        save_data(st.session_state.expenses)
-        st.query_params.clear()
-        st.rerun()
-    elif act == "edit" and idx < len(st.session_state.expenses):
-        st.session_state.edit_index = idx
+    act, idx = params["action"], int(params["id"])
+    if idx < len(st.session_state.expenses):
+        if act == "delete":
+            st.session_state.expenses.pop(idx)
+            save_data(st.session_state.expenses)
+        elif act == "edit":
+            st.session_state.edit_index = idx
         st.query_params.clear()
         st.rerun()
 
@@ -83,40 +72,39 @@ st.markdown(
     .cart-container:hover { transform: scale(1.06); }
 
     .cart-body { padding: 20px; flex-grow: 1; text-align: center; display: flex; flex-direction: column; justify-content: space-around; }
+    
+    /* FIX: Ensure Product Title is visible */
+    .product-title {
+        margin: 0; 
+        font-family: 'Sofia', sans-serif; 
+        font-size: 24px; 
+        color: #ffffff !important;
+        text-shadow: 0px 0px 5px rgba(255,255,255,0.2);
+    }
 
     .cart-footer { display: flex; height: 55px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-
-    .btn-action {
-        flex: 1; display: flex; align-items: center; justify-content: center;
-        font-weight: bold; font-size: 14px; text-decoration: none !important; 
-        transition: 0.3s; cursor: pointer;
-    }
+    .btn-action { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; text-decoration: none !important; cursor: pointer; }
     .btn-edit { background: rgba(0, 255, 255, 0.15); color: #00ffff !important; border-right: 1px solid rgba(255,255,255,0.1); }
-    .btn-edit:hover { background: rgba(0, 255, 255, 0.4); color: white !important; }
     .btn-del { background: rgba(255, 0, 0, 0.15); color: #ff4b4b !important; }
-    .btn-del:hover { background: rgba(255, 0, 0, 0.4); color: white !important; }
 
-    /* Shadow Colors (CPD Logic) */
     .glow-blue { box-shadow: 0 0 20px rgba(0, 191, 255, 0.6); }
     .glow-green { box-shadow: 0 0 20px rgba(50, 205, 50, 0.6); }
     .glow-yellow { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
     .glow-orange { box-shadow: 0 0 20px rgba(255, 165, 0, 0.6); }
     .glow-red { box-shadow: 0 0 30px rgba(255, 69, 0, 0.8); }
     </style>
-    
     <h1 class="font-effect-fire fire-container">Cost Management</h1>
     """, unsafe_allow_html=True
 )
 
 # --- 4. ADD ACTION ---
-_, col_btn, _ = st.columns([1, 1, 1])
+_, col_btn, _ = st.columns()
 if col_btn.button("✨ Add New Cart", use_container_width=True):
-    new_item = {"name": "Product Name", "cost": 0, "date": str(date.today())}
-    st.session_state.expenses.append(new_item)
+    st.session_state.expenses.append({"name": "Product Name", "cost": 0, "date": str(date.today())})
     save_data(st.session_state.expenses)
     st.rerun()
 
-# --- 5. DYNAMIC GRID (4 PER ROW) ---
+# --- 5. DYNAMIC GRID ---
 if st.session_state.expenses:
     cols = st.columns(4, gap="large")
     for idx, item in enumerate(st.session_state.expenses):
@@ -124,18 +112,14 @@ if st.session_state.expenses:
         days = (date.today() - b_date).days or 1
         cpd = item['cost'] / days
         
-        if cpd < 7: glow = "glow-blue"
-        elif cpd < 15: glow = "glow-green"
-        elif cpd < 25: glow = "glow-yellow"
-        elif cpd < 50: glow = "glow-orange"
-        else: glow = "glow-red"
+        glow = "glow-blue" if cpd < 7 else "glow-green" if cpd < 15 else "glow-yellow" if cpd < 25 else "glow-orange" if cpd < 50 else "glow-red"
 
         with cols[idx % 4]:
             st.markdown(f"""
                 <div class="cart-container {glow}">
                     <div class="cart-body">
                         <div>
-                            <h2 style="margin:0; font-family:'Sofia', sans-serif; font-size:22px;">{item['name']}</h2>
+                            <p class="product-title">{item['name']}</p>
                             <p style="color:gray; font-size:11px; margin-top:4px;">📅 {item['date']}</p>
                         </div>
                         <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top:10px;">
@@ -154,21 +138,13 @@ if st.session_state.expenses:
 if st.session_state.edit_index is not None:
     i = st.session_state.edit_index
     if i < len(st.session_state.expenses):
-        item_to_edit = st.session_state.expenses[i]
+        it = st.session_state.expenses[i]
         st.divider()
         with st.form("edit_panel"):
-            st.subheader(f"✏️ Update: {item_to_edit['name']}")
+            st.subheader(f"✏️ Update: {it['name']}")
             f1, f2, f3 = st.columns(3)
-            new_n = f1.text_input("Product Name", value=item_to_edit['name'])
-            new_c = f2.number_input("Total Cost (₹)", value=float(item_to_edit['cost']))
-            new_d = f3.date_input("Date", value=datetime.strptime(item_to_edit['date'], "%Y-%m-%d"))
-            
-            sc1, sc2 = st.columns(2)
-            if sc1.form_submit_button("💾 Save Changes", use_container_width=True):
-                st.session_state.expenses[i] = {"name": new_n, "cost": new_c, "date": str(new_d)}
-                save_data(st.session_state.expenses)
-                st.session_state.edit_index = None
-                st.rerun()
-            if sc2.form_submit_button("🚫 Cancel", use_container_width=True):
-                st.session_state.edit_index = None
-                st.rerun()
+            n, c, d = f1.text_input("Name", value=it['name']), f2.number_input("Cost (₹)", value=float(it['cost'])), f3.date_input("Date", value=datetime.strptime(it['date'], "%Y-%m-%d"))
+            if st.form_submit_button("💾 Save Changes"):
+                st.session_state.expenses[i] = {"name": n, "cost": c, "date": str(d)}
+                save_data(st.session_state.expenses); st.session_state.edit_index = None; st.rerun()
+            if st.button("Cancel"): st.session_state.edit_index = None; st.rerun()
