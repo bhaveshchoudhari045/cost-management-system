@@ -7,7 +7,7 @@ import hashlib
 # 1. PAGE CONFIGURATION
 st.set_page_config(layout="wide", page_title="Cost Management 2026")
 
-# --- 2. AUTHENTICATION SYSTEM ---
+# --- 2. AUTHENTICATION ---
 USER_DB = "users.json"
 
 def load_users():
@@ -26,7 +26,6 @@ def verify_user(username, password):
     hashed_pw = hashlib.sha256(password.encode()).hexdigest()
     return users.get(username) == hashed_pw
 
-# Initialize Session States
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'username' not in st.session_state:
@@ -35,8 +34,7 @@ if 'username' not in st.session_state:
 # --- LOGIN / REGISTER UI ---
 if not st.session_state.logged_in:
     st.markdown("<h1 style='text-align:center; padding-top:50px;'>🛡️ Secure Access</h1>", unsafe_allow_html=True)
-    col_a, col_form, col_c = st.columns([1,2,1])
-    
+    _, col_form, _ = st.columns([1,2,1])
     with col_form:
         tab1, tab2 = st.tabs(["Login", "Register"])
         with tab1:
@@ -48,8 +46,7 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in = True
                         st.session_state.username = l_user
                         st.rerun()
-                    else:
-                        st.error("Invalid credentials")
+                    else: st.error("Invalid credentials")
         with tab2:
             with st.form("reg_form"):
                 r_user = st.text_input("New Username")
@@ -57,10 +54,10 @@ if not st.session_state.logged_in:
                 if st.form_submit_button("Create Account", use_container_width=True):
                     if r_user and r_pass:
                         save_user(r_user, r_pass)
-                        st.success("Account created! Go to Login tab.")
+                        st.success("Account created!")
     st.stop()
 
-# --- 3. DATA MANAGEMENT (POST-LOGIN) ---
+# --- 3. DATA MANAGEMENT ---
 CURRENT_USER = st.session_state.username
 DB_FILE = f"expenses_{CURRENT_USER}.json"
 
@@ -82,11 +79,10 @@ if 'edit_index' not in st.session_state:
 # Sidebar
 st.sidebar.title(f"👤 {CURRENT_USER}")
 if st.sidebar.button("Logout"):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
+    st.session_state.logged_in = False
     st.rerun()
 
-# --- 4. CALLBACK FUNCTIONS (The "No-Logout" Fix) ---
+# Callbacks
 def handle_delete(index):
     st.session_state.expenses.pop(index)
     save_data(st.session_state.expenses)
@@ -94,28 +90,51 @@ def handle_delete(index):
 def handle_edit(index):
     st.session_state.edit_index = index
 
-# --- 5. CUSTOM CSS ---
+# --- 4. CUSTOM CSS (STYLING NATIVE BUTTONS) ---
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com');
+    
     .fire-container {
         color: white; text-align: center; font-size: 70px;
-        font-family: 'Sofia', sans-serif; margin-bottom: 50px; padding-top: 30px;
-        text-shadow: 0px 0px 12px rgba(75, 190, 18, 0.8), 0px 0px 3px rgba(255, 255, 255, 0.5);
+        font-family: 'Sofia', sans-serif; margin-bottom: 50px;
+        text-shadow: 0px 0px 12px rgba(75, 190, 18, 0.8);
     }
-    .cart-container {
+
+    /* Cart Visuals */
+    .cart-box {
         border-radius: 20px; 
         background: rgba(15, 15, 15, 0.85); 
         backdrop-filter: blur(15px);
         border: 1.5px solid rgba(255, 255, 255, 0.15);
-        height: 300px; padding: 20px; text-align: center;
-        transition: transform 0.4s ease-in-out;
+        height: 280px; padding: 20px; text-align: center;
+        margin-bottom: -45px; /* Pulls buttons up into the visual area */
     }
-    .cart-container:hover { transform: scale(1.04); }
-    .product-title { font-family: 'Sofia', sans-serif; font-size: 24px; color: white; margin-bottom: 5px; }
     
-    /* CPD Shadow Colors */
+    /* RESTYLING STREAMLIT BUTTONS */
+    div.stButton > button {
+        border-radius: 0px;
+        border: none;
+        height: 45px;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    
+    /* Edit Button Styling (Cyan) */
+    div[data-testid="stVerticalBlock"] > div:nth-child(2) div.stButton > button {
+        background-color: rgba(0, 255, 255, 0.2) !important;
+        color: #00ffff !important;
+        border-bottom-left-radius: 15px !important;
+    }
+    
+    /* Delete Button Styling (Red) */
+    div[data-testid="stVerticalBlock"] > div:nth-child(2) div.stButton:nth-child(2) > button {
+        background-color: rgba(255, 0, 0, 0.2) !important;
+        color: #ff4b4b !important;
+        border-bottom-right-radius: 15px !important;
+    }
+
     .glow-blue { box-shadow: 0 0 15px rgba(0, 191, 255, 0.6); }
     .glow-green { box-shadow: 0 0 15px rgba(50, 205, 50, 0.6); }
     .glow-yellow { box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
@@ -126,27 +145,27 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- 6. GRID & ACTIONS ---
+# --- 5. GRID ---
 _, col_btn, _ = st.columns([1,1,1])
 with col_btn:
     if st.button("✨ Add New Cart", use_container_width=True):
-        st.session_state.expenses.append({"name": "New Product", "cost": 0, "date": str(date.today())})
+        st.session_state.expenses.append({"name": "New Item", "cost": 0, "date": str(date.today())})
         save_data(st.session_state.expenses)
         st.rerun()
 
 if st.session_state.expenses:
-    cols = st.columns(4, gap="medium")
+    cols = st.columns(4)
     for idx, item in enumerate(st.session_state.expenses):
         b_date = datetime.strptime(item['date'], "%Y-%m-%d").date()
-        days = (date.today() - b_date).days or 1
+        days = max((date.today() - b_date).days, 1)
         cpd = item['cost'] / days
         glow = "glow-blue" if cpd < 7 else "glow-green" if cpd < 15 else "glow-yellow" if cpd < 25 else "glow-orange" if cpd < 50 else "glow-red"
 
         with cols[idx % 4]:
-            # Visual Cart
+            # Visual Part
             st.markdown(f"""
-                <div class="cart-container {glow}">
-                    <p class="product-title">{item['name']}</p>
+                <div class="cart-box {glow}">
+                    <p style="font-family:'Sofia'; font-size:24px; color:white; margin:0;">{item['name']}</p>
                     <p style="color:#aaa; font-size:11px;">📅 {item['date']}</p>
                     <hr style="opacity:0.1">
                     <p style="font-size:22px; font-weight:bold; margin:0; color:white;">₹{item['cost']}</p>
@@ -154,30 +173,24 @@ if st.session_state.expenses:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Action Row (Built-in Streamlit buttons for stability)
-            btn_col1, btn_col2 = st.columns(2)
-            btn_col1.button("Edit 📝", key=f"e_{idx}", on_click=handle_edit, args=(idx,), use_container_width=True)
-            btn_col2.button("Del 🗑️", key=f"d_{idx}", on_click=handle_delete, args=(idx,), use_container_width=True)
+            # Action Row (Integrated style)
+            btn_col1, btn_col2 = st.columns(2, gap="small")
+            btn_col1.button("EDIT", key=f"e_{idx}", on_click=handle_edit, args=(idx,), use_container_width=True)
+            btn_col2.button("DELETE", key=f"d_{idx}", on_click=handle_delete, args=(idx,), use_container_width=True)
 
-# --- 7. EDIT FORM ---
+# --- 6. EDIT FORM ---
 if st.session_state.edit_index is not None:
     i = st.session_state.edit_index
     if i < len(st.session_state.expenses):
         it = st.session_state.expenses[i]
-        st.divider()
         with st.form("edit_panel"):
             st.subheader(f"✏️ Update: {it['name']}")
             f1, f2, f3 = st.columns(3)
             n = f1.text_input("Name", value=it['name'])
             c = f2.number_input("Cost (₹)", value=float(it['cost']))
             d = f3.date_input("Date", value=datetime.strptime(it['date'], "%Y-%m-%d"))
-            
-            sc1, sc2 = st.columns(2)
-            if sc1.form_submit_button("💾 Save Changes", use_container_width=True):
+            if st.form_submit_button("Save Changes"):
                 st.session_state.expenses[i] = {"name": n, "cost": c, "date": str(d)}
                 save_data(st.session_state.expenses)
-                st.session_state.edit_index = None
-                st.rerun()
-            if sc2.form_submit_button("Cancel", use_container_width=True):
                 st.session_state.edit_index = None
                 st.rerun()
