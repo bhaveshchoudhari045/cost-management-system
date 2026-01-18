@@ -34,7 +34,7 @@ if 'username' not in st.session_state:
 # --- LOGIN / REGISTER UI ---
 if not st.session_state.logged_in:
     st.markdown("<h1 style='text-align:center; padding-top:50px;'>🛡️ Secure Access</h1>", unsafe_allow_html=True)
-    _, col_form, _ = st.columns([1,2,1])
+    _, col_form, _ = st.columns(3)
     with col_form:
         tab1, tab2 = st.tabs(["Login", "Register"])
         with tab1:
@@ -76,12 +76,6 @@ if 'expenses' not in st.session_state:
 if 'edit_index' not in st.session_state:
     st.session_state.edit_index = None
 
-# Sidebar
-st.sidebar.title(f"👤 {CURRENT_USER}")
-if st.sidebar.button("Logout"):
-    st.session_state.logged_in = False
-    st.rerun()
-
 # Callbacks
 def handle_delete(index):
     st.session_state.expenses.pop(index)
@@ -90,7 +84,7 @@ def handle_delete(index):
 def handle_edit(index):
     st.session_state.edit_index = index
 
-# --- 4. CUSTOM CSS (STYLING NATIVE BUTTONS) ---
+# --- 4. CUSTOM CSS (TEXT-ONLY CART BUTTONS) ---
 st.markdown(
     """
     <style>
@@ -102,37 +96,34 @@ st.markdown(
         text-shadow: 0px 0px 12px rgba(75, 190, 18, 0.8);
     }
 
-    /* Cart Visuals */
     .cart-box {
         border-radius: 20px; 
         background: rgba(15, 15, 15, 0.85); 
         backdrop-filter: blur(15px);
         border: 1.5px solid rgba(255, 255, 255, 0.15);
         height: 280px; padding: 20px; text-align: center;
-        margin-bottom: -45px; /* Pulls buttons up into the visual area */
+        margin-bottom: -10px;
     }
     
-    /* RESTYLING STREAMLIT BUTTONS */
-    div.stButton > button {
-        border-radius: 0px;
-        border: none;
-        height: 45px;
-        font-weight: bold;
-        transition: 0.3s;
+    /* TARGET ONLY EDIT/DELETE BUTTONS INSIDE COLUMNS */
+    /* Removes all styling except text color */
+    div[data-testid="stHorizontalBlock"] div.stButton > button {
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        font-weight: bold !important;
+        text-decoration: underline;
+        font-size: 14px !important;
     }
     
-    /* Edit Button Styling (Cyan) */
-    div[data-testid="stVerticalBlock"] > div:nth-child(2) div.stButton > button {
-        background-color: rgba(0, 255, 255, 0.2) !important;
+    /* Cyan for Edit Text */
+    div[data-testid="stHorizontalBlock"] div:nth-child(1) > div.stButton > button {
         color: #00ffff !important;
-        border-bottom-left-radius: 15px !important;
     }
     
-    /* Delete Button Styling (Red) */
-    div[data-testid="stVerticalBlock"] > div:nth-child(2) div.stButton:nth-child(2) > button {
-        background-color: rgba(255, 0, 0, 0.2) !important;
+    /* Red for Delete Text */
+    div[data-testid="stHorizontalBlock"] div:nth-child(2) > div.stButton > button {
         color: #ff4b4b !important;
-        border-bottom-right-radius: 15px !important;
     }
 
     .glow-blue { box-shadow: 0 0 15px rgba(0, 191, 255, 0.6); }
@@ -146,7 +137,7 @@ st.markdown(
 )
 
 # --- 5. GRID ---
-_, col_btn, _ = st.columns([1,1,1])
+_, col_btn, _ = st.columns(3)
 with col_btn:
     if st.button("✨ Add New Cart", use_container_width=True):
         st.session_state.expenses.append({"name": "New Item", "cost": 0, "date": str(date.today())})
@@ -154,7 +145,7 @@ with col_btn:
         st.rerun()
 
 if st.session_state.expenses:
-    cols = st.columns(4)
+    cols = st.columns(4, gap="large")
     for idx, item in enumerate(st.session_state.expenses):
         b_date = datetime.strptime(item['date'], "%Y-%m-%d").date()
         days = max((date.today() - b_date).days, 1)
@@ -162,7 +153,6 @@ if st.session_state.expenses:
         glow = "glow-blue" if cpd < 7 else "glow-green" if cpd < 15 else "glow-yellow" if cpd < 25 else "glow-orange" if cpd < 50 else "glow-red"
 
         with cols[idx % 4]:
-            # Visual Part
             st.markdown(f"""
                 <div class="cart-box {glow}">
                     <p style="font-family:'Sofia'; font-size:24px; color:white; margin:0;">{item['name']}</p>
@@ -173,8 +163,8 @@ if st.session_state.expenses:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Action Row (Integrated style)
-            btn_col1, btn_col2 = st.columns(2, gap="small")
+            # Action Row (Text-Only Style)
+            btn_col1, btn_col2 = st.columns(2)
             btn_col1.button("EDIT", key=f"e_{idx}", on_click=handle_edit, args=(idx,), use_container_width=True)
             btn_col2.button("DELETE", key=f"d_{idx}", on_click=handle_delete, args=(idx,), use_container_width=True)
 
@@ -189,7 +179,7 @@ if st.session_state.edit_index is not None:
             n = f1.text_input("Name", value=it['name'])
             c = f2.number_input("Cost (₹)", value=float(it['cost']))
             d = f3.date_input("Date", value=datetime.strptime(it['date'], "%Y-%m-%d"))
-            if st.form_submit_button("Save Changes"):
+            if st.form_submit_button("Save Changes", use_container_width=True):
                 st.session_state.expenses[i] = {"name": n, "cost": c, "date": str(d)}
                 save_data(st.session_state.expenses)
                 st.session_state.edit_index = None
